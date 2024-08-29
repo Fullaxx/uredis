@@ -1,0 +1,25 @@
+volumes:
+  rsock: {}
+
+services:
+  redis:
+    image: fullaxx/uredis
+    volumes:
+     - rsock:/run/redis
+
+  brettdev:
+    image: fullaxx/brettdev
+    security_opt:
+     - seccomp:unconfined
+    environment:
+     - VNCRES=2960x1620
+    ports:
+     - 5901:5901
+    volumes:
+     - rsock:/run/redis
+    depends_on:
+      redis:
+        condition: service_started
+#      db:
+#        condition: service_healthy service_started
+#        restart: true
