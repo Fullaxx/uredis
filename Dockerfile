@@ -18,6 +18,11 @@ VOLUME /data
 VOLUME /run/redis
 
 # ------------------------------------------------------------------------------
+# Define Healthcheck
+HEALTHCHECK --start-period=2s --interval=5s \
+CMD redis-cli -s /run/redis/redis.sock PING
+
+# ------------------------------------------------------------------------------
 # Define default command
 # CMD [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
 CMD [ "/app/app.sh" ]
