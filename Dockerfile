@@ -1,11 +1,11 @@
 # ------------------------------------------------------------------------------
 # Pull base image
 FROM redis:latest
-MAINTAINER Brett Kuskie <fullaxx@gmail.com>
+LABEL author="Brett Kuskie <fullaxx@gmail.com>"
 
 # ------------------------------------------------------------------------------
 # Set environment variables
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # ------------------------------------------------------------------------------
 # Add app.sh and redis.conf
