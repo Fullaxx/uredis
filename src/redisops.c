@@ -11,7 +11,7 @@
 
 extern int g_shutdown;
 extern unsigned int g_threads;
-pthread_mutex_t rlock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t g_rlock = PTHREAD_MUTEX_INITIALIZER;
 redisContext *rc = NULL;
 
 #include <errno.h>
@@ -31,6 +31,11 @@ static inline void handle_redis_error(void)
 		case REDIS_ERR_OOM:
 			etype = "REDIS_ERR_OOM";
 			break;
+#ifdef REDIS_ERR_TIMEOUT
+		case REDIS_ERR_TIMEOUT:
+			etype = "REDIS_ERR_TIMEOUT";
+			break;
+#endif
 		case REDIS_ERR_OTHER:
 			etype = "REDIS_ERR_OTHER";
 			break;
@@ -48,12 +53,12 @@ int do_lpush_ltrim_multi(char *list, unsigned long val, unsigned long listsize)
 	int retval = 0;
 	redisReply *reply;
 
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	freeReplyObject(redisCommand(rc, "MULTI"));
 	freeReplyObject(redisCommand(rc, "LPUSH %s %lu", list, val));
 	freeReplyObject(redisCommand(rc, "LTRIM %s 0 %u", list, listsize-1));
 	reply = (redisCommand(rc, "EXEC"));
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
@@ -65,9 +70,9 @@ int do_hset(char *hash, unsigned long key, unsigned long val)
 {
 	int retval = 0;
 	redisReply *reply;
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	reply = redisCommand(rc, "HSET %s %lu %lu", hash, key, val);
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
 	//if(reply->type == REDIS_REPLY_STATUS) { printf("LTRIM: %s\n", reply->str); }
@@ -79,9 +84,9 @@ int do_ltrim(char *list, unsigned long listsize)
 {
 	int retval = 0;
 	redisReply *reply;
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	reply = redisCommand(rc, "LTRIM %s 0 %u", list, listsize-1);
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
 	//if(reply->type == REDIS_REPLY_STATUS) { printf("LTRIM: %s\n", reply->str); }
@@ -94,9 +99,9 @@ int do_lpush(char *list, unsigned long val, unsigned long listsize)
 	unsigned long members;
 	int retval = 0;
 	redisReply *reply;
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	reply = redisCommand(rc, "LPUSH %s %lu", list, val);
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
 	if(reply->type == REDIS_REPLY_INTEGER) {
@@ -108,13 +113,26 @@ int do_lpush(char *list, unsigned long val, unsigned long listsize)
 	return retval;
 }
 
+int do_sadd(unsigned long key, unsigned long val)
+{
+	int retval = 0;
+	redisReply *reply;
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
+	reply = redisCommand(rc, "SADD %lu %lu", key, val);
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
+	if(!reply) { handle_redis_error(); return -1; }
+	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
+	freeReplyObject(reply);
+	return retval;
+}
+
 int do_setex(unsigned long key, unsigned long val)
 {
 	int retval = 0;
 	redisReply *reply;
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	reply = redisCommand(rc, "SET %lu %lu EX 2", key, val);
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
 	freeReplyObject(reply);
@@ -125,9 +143,9 @@ int do_incr(char *key)
 {
 	int retval = 0;
 	redisReply *reply;
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	reply = redisCommand(rc, "INCR %s", key);
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
 	freeReplyObject(reply);
@@ -138,9 +156,9 @@ int do_ping(void)
 {
 	int retval = 0;
 	redisReply *reply;
-	if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 	reply = redisCommand(rc, "PING");
-	if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+	if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	if(!reply) { handle_redis_error(); return -1; }
 	if(reply->type == REDIS_REPLY_ERROR) { retval = 1; }
 	freeReplyObject(reply);
@@ -175,9 +193,9 @@ int do_connect(char *dest, unsigned short port)
 void do_disconnect(void)
 {
 	if(rc) {
-		if(g_threads > 1) { pthread_mutex_lock(&rlock); }
+		if(g_threads > 1) { pthread_mutex_lock(&g_rlock); }
 		redisFree(rc);
 		rc = NULL;
-		if(g_threads > 1) { pthread_mutex_unlock(&rlock); }
+		if(g_threads > 1) { pthread_mutex_unlock(&g_rlock); }
 	}
 }

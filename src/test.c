@@ -100,6 +100,20 @@ static void* run_test(void *p)
 }
 #endif
 
+#ifdef SADD_TEST
+static void* run_test(void *p)
+{
+	int r;
+	unsigned long key = 0;
+	while(!g_shutdown) {
+		r = do_sadd(key++, 0);
+		if(r) { fprintf(stderr, "SET ERROR!\n"); g_shutdown=1; }
+		g_counter++;
+	}
+	return NULL;
+}
+#endif
+
 #ifdef SETEX_TEST
 static void* run_test(void *p)
 {

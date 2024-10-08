@@ -34,6 +34,14 @@ gcc ${DBGCFLAGS} -DSETEX_TEST test.c \
 redisops.c getopts.c \
 -lpthread -lhiredis -o setex_test.dbg
 
+gcc ${OPTCFLAGS} -DSADD_TEST test.c \
+redisops.c getopts.c \
+-lpthread -lhiredis -o sadd_test.exe
+
+gcc ${DBGCFLAGS} -DSADD_TEST test.c \
+redisops.c getopts.c \
+-lpthread -lhiredis -o sadd_test.dbg
+
 gcc ${OPTCFLAGS} -DLPUSH_TEST test.c \
 redisops.c getopts.c \
 -lpthread -lhiredis -o lpush_test.exe
